@@ -18,3 +18,8 @@ mvn spring-boot:run
 # MVC (port 8081) — requires REST running on http://localhost:8080
 cd ../bank-mvc
 mvn spring-boot:run
+
+## Auth & API docs
+- Write operations require Basic auth: **api / secret**
+- Swagger UI (REST): `http://localhost:8080/swagger-ui/index.html`
+- Health: `GET http://localhost:8080/api/ping` → `{"status":"ok"}`
