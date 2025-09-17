@@ -1,17 +1,20 @@
 # Bank (MVC + REST)
+![CI](https://github.com/bogdan17lech-coder/bank-app/actions/workflows/ci.yml/badge.svg?branch=main)
 
-Spring Boot 3, Spring MVC, Spring Security (Basic), JPA/Hibernate, H2/MySQL.
+A small Spring Boot 3 project: REST API for customers, accounts and transactions + server-side MVC UI.  
+Write operations are protected by Basic auth.
 
 ## Modules
-- `bank-rest` — REST API (customers, accounts, transactions)
-- `bank-mvc`  — UI (server-side MVC), ходит в REST через `RestTemplate`
+- **bank-rest** — REST API (customers, accounts, transactions)
+- **bank-mvc** — server-side UI calling the REST via `RestTemplate`
+- **bank-core** — shared DTOs
 
-## Run
+## How to run
 ```bash
-# REST
+# REST (port 8080)
 cd bank-rest
 mvn spring-boot:run
 
-# MVC (нужен запущенный REST на localhost:8080)
+# MVC (port 8081) — requires REST running on http://localhost:8080
 cd ../bank-mvc
 mvn spring-boot:run
