@@ -20,6 +20,18 @@ cd ../bank-mvc
 mvn spring-boot:run
 
 ## Auth & API docs
-- Write operations require Basic auth: **api / secret**
+- Write operations require Basic auth: **user:** `api`, **password:** `secret`
 - Swagger UI (REST): `http://localhost:8080/swagger-ui/index.html`
-- Health: `GET http://localhost:8080/api/ping` → `{"status":"ok"}`
+- Health check: `GET http://localhost:8080/api/ping` → `{"status":"ok"}`
+
+## Tests
+```bash
+# all modules
+mvn -q clean test
+
+# only REST
+mvn -q -pl bank-rest test
+
+# only MVC
+mvn -q -pl bank-mvc test
+
