@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Open Account</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;margin:32px}
+        .card{border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:700px}
+        h1{margin:0 0 8px}
+        .actions{margin:0 0 12px}   /* ближе к заголовку */
+        form{display:grid;grid-template-columns:160px 1fr;gap:10px 14px;max-width:560px}
+        input,select{padding:10px 12px;border:1px solid #ddd;border-radius:10px}
+        .hint{color:#6b7280;font-size:0.92rem}
+        .submit{grid-column:1/-1;margin-top:8px}
+        a{text-decoration:none;margin-right:10px}
+        button{padding:10px 14px;border:1px solid #ddd;border-radius:10px;background:#f9fafb;cursor:pointer}
+        .error{color:#b91c1c;margin:8px 0 16px}
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>Open Account</h1>
+    <div class="actions">
+        <a th:href="@{'/customers/' + ${customer.id}}">← Back to customer</a>
+    </div>
+
+    <p th:if="${error}" th:text="${error}" class="error"></p>
+
+    <form th:action="@{'/customers/' + ${customer.id} + '/accounts'}" method="post">
+        <label for="number">Account number</label>
+        <div>
+            <input id="number" name="number" placeholder="e.g. ACC-1002 or IBAN" required />
+            <div class="hint">This is the account identifier (not an amount).</div>
+        </div>
+
+        <label for="currency">Currency</label>
+        <select id="currency" name="currency" required>
+            <option value="USD">USD</option>
+            <option value="PLN">PLN</option>
+            <option value="EUR">EUR</option>
+        </select>
+
+        <label for="balance">Initial balance</label>
+        <input id="balance" name="balance" type="number" step="0.01" min="0" value="0.00" required />
+
+        <div class="submit">
+            <button type="submit">Create</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

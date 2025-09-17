@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Delete Customer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;margin:32px}
+        .card{border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:700px}
+        h1{margin:0 0 12px}
+        .warn{color:#b45309;margin:6px 0 14px}
+        .row{margin:6px 0}
+        .actions{margin-top:16px;display:flex;gap:12px}
+
+        /* одинаковый стиль и для <a>, и для <button> */
+        .btn{display:inline-flex;align-items:center;padding:10px 14px;
+             border:1px solid #ddd;border-radius:10px;background:#f9fafb;
+             text-decoration:none;cursor:pointer;font:inherit;line-height:1.2}
+        .btn-danger{border-color:#fca5a5;background:#fee2e2}
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>Delete Customer</h1>
+
+    <div class="row">
+        <div><strong>ID:</strong> <span th:text="${customer.id}">1</span></div>
+        <div><strong>Name:</strong> <span th:text="${customer.fullName}">John Doe</span></div>
+        <div><strong>Email:</strong> <span th:text="${customer.email}">john@doe.com</span></div>
+    </div>
+
+    <p class="warn"><strong>This action cannot be undone.</strong> Are you sure?</p>
+
+    <div class="actions">
+        <a href="/customers" class="btn">Cancel</a>
+        <form th:action="@{'/customers/' + ${customer.id} + '/delete'}" method="post" style="display:inline">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

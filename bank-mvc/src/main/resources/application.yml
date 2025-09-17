@@ -1,0 +1,19 @@
+server:
+  port: 8081
+
+spring:
+  thymeleaf:
+    cache: false
+
+logging:
+  level:
+    org.springframework.web.client.RestTemplate: DEBUG
+
+bank:
+  api:
+    base-url: http://localhost:8080
+    customers-path: /api/customers
+    auth:
+      type: basic
+      username: api       # твои креды к REST
+      password: secret

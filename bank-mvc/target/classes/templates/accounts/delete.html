@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Delete Account</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;margin:32px}
+        .card{border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:700px}
+        h1{margin:0 0 12px}
+        .warn{color:#b45309;margin:6px 0 14px}
+        .actions{margin-top:16px;display:flex;gap:12px}
+        /* одинаковый стиль и для <a>, и для <button> */
+        .btn{display:inline-flex;align-items:center;padding:10px 14px;
+             border:1px solid #ddd;border-radius:10px;background:#f9fafb;
+             text-decoration:none;cursor:pointer;font:inherit;line-height:1.2}
+        .btn-danger{border-color:#fca5a5;background:#fee2e2}
+        .muted{color:#6b7280}
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>Delete Account</h1>
+
+    <table style="width:100%;border-collapse:collapse">
+        <tr><th style="text-align:left;padding:6px 0">ID</th><td th:text="${account.id}">1</td></tr>
+        <tr><th style="text-align:left;padding:6px 0">Number</th><td th:text="${account.number}">ACC-1001</td></tr>
+    </table>
+
+    <p class="warn">
+        <strong>This action cannot be undone.</strong>
+        <span th:if="${!canDelete}" class="muted">Balance must be 0 to delete this account.</span>
+    </p>
+
+    <div class="actions">
+        <a th:href="@{'/customers/' + ${customer.id}}" class="btn">Cancel</a>
+        <form th:action="@{'/customers/' + ${customer.id} + '/accounts/' + ${account.id} + '/delete'}" method="post" style="display:inline">
+            <button type="submit" class="btn btn-danger" th:disabled="${!canDelete}">Delete</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Customer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;margin:32px}
+        .card{border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:1000px}
+        h1{margin:0 0 8px}
+        .actions{margin:0 0 12px}
+        .actions a{margin-right:12px;text-decoration:none}
+        table{width:100%;border-collapse:collapse;margin-top:8px}
+        th,td{padding:10px 12px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}
+        .error{color:#b91c1c;margin:8px 0}
+        .success{color:#065f46;margin:8px 0}
+        .section{margin-top:18px}
+        .action-col a{display:block;margin:2px 0;text-decoration:none}
+        .muted{color:#6b7280}
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>Customer</h1>
+
+    <div class="actions">
+        <a href="/customers">← Back to list</a>
+        <a th:href="@{'/customers/' + ${customer.id} + '/edit'}">Edit</a>
+        <a th:href="@{'/customers/' + ${customer.id} + '/delete'}">Delete</a>
+    </div>
+
+    <p th:if="${message}" th:text="${message}" class="success"></p>
+    <p th:if="${error}" th:text="${error}" class="error"></p>
+
+    <table>
+        <tr><th>ID</th><td th:text="${customer.id}">1</td></tr>
+        <tr><th>Full name</th><td th:text="${customer.fullName}">John Doe</td></tr>
+        <tr><th>Email</th><td th:text="${customer.email}">john@doe.com</td></tr>
+    </table>
+
+    <div class="section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <h2 style="margin:0">Accounts</h2>
+            <a th:href="@{'/customers/' + ${customer.id} + '/accounts/new'}" style="text-decoration:none">Open account</a>
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th><th>Number</th><th>Balance</th><th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${accounts == null or #lists.isEmpty(accounts)}">
+                <td colspan="4" class="muted">No accounts yet.</td>
+            </tr>
+
+            <tr th:each="a : ${accounts}">
+                <td th:text="${a.id}">1</td>
+                <td th:text="${a.number}">ACC-1001</td>
+                <td th:text="${#numbers.formatDecimal(a.balance,1,'DEFAULT',2,'DEFAULT')} + ' ' + ${a.currency}">0.00</td>
+                <td class="action-col">
+                    <a th:href="@{'/customers/' + ${customer.id} + '/accounts/' + ${a.id}}">Transactions</a>
+                    <a th:href="@{'/customers/' + ${customer.id} + '/accounts/' + ${a.id} + '/deposit'}">Deposit</a>
+                    <a th:href="@{'/customers/' + ${customer.id} + '/accounts/' + ${a.id} + '/withdraw'}">Withdraw</a>
+                    <a th:href="@{'/customers/' + ${customer.id} + '/accounts/' + ${a.id} + '/transfer'}">Transfer</a>
+                    <a th:if="${a.balance == null or a.balance.compareTo(0) == 0}"
+                       th:href="@{'/customers/' + ${customer.id} + '/accounts/' + ${a.id} + '/delete'}">Delete account</a>
+                    <span th:if="${a.balance != null and a.balance.compareTo(0) != 0}" class="muted">
+              Delete not allowed (balance ≠ 0)
+            </span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

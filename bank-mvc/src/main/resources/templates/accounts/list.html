@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Accounts</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;margin:32px}
+        .card{border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:900px}
+        table{width:100%;border-collapse:collapse;margin-top:12px}
+        th,td{padding:10px 12px;border-bottom:1px solid #eee;text-align:left}
+        h1{margin:0 0 12px}
+        .actions-top a{text-decoration:none;margin-right:12px}
+        .error{color:#b91c1c;margin:8px 0 0}
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>Accounts of <span th:text="${customer.fullName}">Customer</span></h1>
+
+    <div class="actions-top">
+        <a th:href="@{'/customers/' + ${customer.id}}">← Back to customer</a>
+    </div>
+
+    <p th:if="${error}" th:text="${error}" class="error"></p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Number</th>
+            <th>Balance</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="a : ${accounts}">
+            <td th:text="${a.id}">1</td>
+            <td th:text="${a.number}">PL00 0000 0000 0000</td>
+            <td th:text="${#numbers.formatDecimal(a.balance,1,'DEFAULT',2,'DEFAULT')} + ' ' + ${a.currency}">0.00 PLN</td>
+            <td class="action-col">
+                <a th:href="@{'/customers/' + ${customer.id} + '/accounts/' + ${a.id}}">View</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
