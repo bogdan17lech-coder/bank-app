@@ -4,7 +4,7 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 
 # IntelliJ
-.idea/
+bank/.idea/
 *.iml
 
 # OS
