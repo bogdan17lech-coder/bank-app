@@ -9,9 +9,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.*;
 
+/** Global JSON error handler for REST API */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // Bean Validation (@Valid) → 400 + list of field errors
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         List<Map<String, String>> errors = new ArrayList<>();
@@ -28,6 +30,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    // ResponseStatusException → keep original status + reason + message
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     public org.springframework.http.ResponseEntity<java.util.Map<String, Object>>
     handleRse(org.springframework.web.server.ResponseStatusException ex) {

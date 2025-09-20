@@ -6,19 +6,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
+// Spring Data JPA repo for customers (REST side)
 public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> {
 
+    // Find by unique email
     Optional<CustomerEntity> findByEmail(String email);
 
+    // Check if email already exists
     boolean existsByEmail(String email);
 
-    // <-- нужен для проверки уникальности email при update(id)
+    // For update: email exists but belongs to another id
     boolean existsByEmailAndIdNot(String email, Long id);
 
-    // для постраничного списка
+    // Paged list
     Page<CustomerEntity> findAll(Pageable pageable);
 
-    // для поиска по q (то, что зовётся из CustomerService.search)
+    // Search by first or last name (case-insensitive), paged
     Page<CustomerEntity> findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(
             String firstNamePart, String lastNamePart, Pageable pageable
     );

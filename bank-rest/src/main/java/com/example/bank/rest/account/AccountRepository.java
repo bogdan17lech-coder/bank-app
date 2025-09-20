@@ -5,14 +5,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
+// Spring Data JPA repo for accounts (REST side)
 public interface AccountRepository extends JpaRepository<AccountEntity, Long> {
 
-    // все счета клиента
+    // All accounts of a customer
     List<AccountEntity> findByCustomerId(Long customerId);
 
-    // конкретный счёт, проверяя владельца
+    // One account by id, but also verify owner
     Optional<AccountEntity> findByIdAndCustomerId(Long id, Long customerId);
 
-    // по номеру (удобно для проверок уникальности/поиска)
+    // Lookup by unique account number (for search/uniqueness checks)
     Optional<AccountEntity> findByNumber(String number);
 }

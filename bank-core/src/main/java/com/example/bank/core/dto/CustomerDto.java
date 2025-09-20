@@ -3,20 +3,26 @@ package com.example.bank.core.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+// Simple DTO for customer data (used in API layer)
 public class CustomerDto {
     private Long id;
 
+    // Required first name
     @NotBlank(message = "firstName is required")
     private String firstName;
 
+    // Optional last name
     private String lastName;
 
+    // Required email, must be valid format
     @NotBlank(message = "email is required")
     @Email(message = "email must be valid")
     private String email;
 
+    // No-args ctor for frameworks (Jackson/validation)
     public CustomerDto() {}
 
+    // Convenience ctor for mapping/tests
     public CustomerDto(Long id, String firstName, String lastName, String email) {
         this.id = id;
         this.firstName = firstName;
@@ -24,6 +30,7 @@ public class CustomerDto {
         this.email = email;
     }
 
+    // Getters/Setters (no extra logic)
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

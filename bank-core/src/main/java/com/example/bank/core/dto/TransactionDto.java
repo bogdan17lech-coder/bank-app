@@ -3,19 +3,31 @@ package com.example.bank.core.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+// DTO for account transactions shown in API responses
 public class TransactionDto {
     private Long id;
-    private String type;           // DEPOSIT / WITHDRAW
+
+    // "DEPOSIT" or "WITHDRAW"
+    private String type;
+
+    // Operation amount
     private BigDecimal amount;
+
+    // Balance right after this operation
     private BigDecimal balanceAfter;
+
+    // Timestamp when it happened (server time)
     private Instant createdAt;
 
+    // No-args ctor for Jackson
     public TransactionDto() {}
 
+    // Convenience ctor for mapping/tests
     public TransactionDto(Long id, String type, BigDecimal amount, BigDecimal balanceAfter, Instant createdAt) {
         this.id = id; this.type = type; this.amount = amount; this.balanceAfter = balanceAfter; this.createdAt = createdAt;
     }
 
+    // Getters/Setters (no extra logic)
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getType() { return type; }

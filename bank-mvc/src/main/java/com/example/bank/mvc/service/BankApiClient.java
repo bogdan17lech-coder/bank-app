@@ -9,6 +9,10 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.util.*;
 
+/**
+ * Thin REST client for the backend API (used by MVC layer).
+ * Keeps payloads minimal and maps responses into MVC DTOs.
+ */
 @Service
 public class BankApiClient {
 
@@ -27,7 +31,7 @@ public class BankApiClient {
         String url = baseUrl + customersPath;
         ResponseEntity<CustomerDto[]> resp = rest.getForEntity(url, CustomerDto[].class);
         List<CustomerDto> list = Arrays.asList(Objects.requireNonNull(resp.getBody()));
-        for (CustomerDto c : list) setFullName(c);
+        for (CustomerDto c : list) setFullName(c); // compute full name for views
         return list;
     }
 
@@ -46,7 +50,7 @@ public class BankApiClient {
         payload.put("email",     form.getEmail());
         ResponseEntity<CustomerDto> resp = rest.postForEntity(url, payload, CustomerDto.class);
         CustomerDto body = resp.getBody();
-        if (body != null) { setFullName(body); }
+        if (body != null) setFullName(body);
         return body;
     }
 
@@ -57,13 +61,14 @@ public class BankApiClient {
         payload.put("lastName",  form.getLastName());
         payload.put("email",     form.getEmail());
         rest.put(url, payload);
-        return getCustomer(id);
+        return getCustomer(id); // re-fetch to get updated + computed fullName
     }
 
     public void deleteCustomer(Long id) {
         rest.delete(baseUrl + customersPath + "/" + id);
     }
 
+    // Build "First Last" for MVC (not persisted by API)
     private void setFullName(CustomerDto c) {
         String fn = c.getFirstName() == null ? "" : c.getFirstName();
         String ln = c.getLastName()  == null ? "" : c.getLastName();
@@ -88,13 +93,13 @@ public class BankApiClient {
         return Arrays.asList(Objects.requireNonNull(resp.getBody()));
     }
 
-    // NEW: number + currency + balance
+    // Create account with number + currency + initial balance (as required by API)
     public AccountDto createAccount(Long customerId, String number, String currency, BigDecimal balance) {
         String url = baseUrl + customersPath + "/" + customerId + "/accounts";
         Map<String, Object> payload = new HashMap<>();
         payload.put("number", number);
         payload.put("currency", currency);
-        payload.put("balance", balance); // <-- требовалось REST’ом
+        payload.put("balance", balance); // initial balance sent to REST
         return Objects.requireNonNull(rest.postForObject(url, payload, AccountDto.class));
     }
 
@@ -115,7 +120,7 @@ public class BankApiClient {
         return Objects.requireNonNull(rest.postForObject(url, payload, TransactionDto.class));
     }
 
-    // предполагаем, что REST принимает toAccountId любого клиента
+    // Assume REST allows cross-customer transfers by toAccountId
     public TransactionDto transfer(Long customerId, Long fromAccountId, Long toAccountId, BigDecimal amount, String description) {
         String url = baseUrl + customersPath + "/" + customerId + "/accounts/" + fromAccountId + "/transfer";
         Map<String, Object> payload = new HashMap<>();
@@ -125,7 +130,7 @@ public class BankApiClient {
         return Objects.requireNonNull(rest.postForObject(url, payload, TransactionDto.class));
     }
 
-    // Публичное получение счёта по ID (если есть на REST /api/accounts/{id})
+    // Public read by account id (if backend exposes /api/accounts/{id})
     public AccountDto getAccountByAnyId(Long accountId) {
         String url = baseUrl + "/api/accounts/" + accountId;
         return rest.getForObject(url, AccountDto.class);

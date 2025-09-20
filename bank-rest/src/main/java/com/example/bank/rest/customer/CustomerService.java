@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.ArrayList;
 import java.util.List;
 
+// Service for customer CRUD + simple search (REST side)
 @Service
 public class CustomerService {
 
@@ -20,6 +21,7 @@ public class CustomerService {
         this.repo = repo;
     }
 
+    // Return all customers (no paging) — demo endpoint
     public List<CustomerDto> all() {
         List<CustomerEntity> entities = repo.findAll();
         List<CustomerDto> result = new ArrayList<>();
@@ -29,6 +31,7 @@ public class CustomerService {
         return result;
     }
 
+    // Create new customer (checks email uniqueness)
     public CustomerDto create(CustomerDto dto) {
         if (repo.existsByEmail(dto.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "email already exists");
@@ -40,30 +43,31 @@ public class CustomerService {
         return toDto(repo.save(e));
     }
 
+    // Get by id or 404
     public CustomerDto byId(long id) {
         CustomerEntity e = repo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "customer not found"));
         return toDto(e);
     }
 
+    // Full update (PUT). If email changes → verify uniqueness on other ids.
     public CustomerDto update(long id, CustomerDto dto) {
         CustomerEntity e = repo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "customer not found"));
 
-        // если email меняется — проверим уникальность у других
         if (!dto.getEmail().equals(e.getEmail())
                 && repo.existsByEmailAndIdNot(dto.getEmail(), id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "email already exists");
         }
 
-        // перезаписываем все поля
         e.setFirstName(dto.getFirstName());
-        e.setLastName(dto.getLastName());          // lastName может быть null/пустым — это ок
+        e.setLastName(dto.getLastName()); // lastName may be null/blank — it's ok
         e.setEmail(dto.getEmail());
 
         return toDto(repo.save(e));
     }
 
+    // Search by name with paging (q optional)
     public List<CustomerDto> search(String q, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
@@ -78,10 +82,10 @@ public class CustomerService {
         for (CustomerEntity e : p.getContent()) {
             result.add(toDto(e));
         }
-        return result; // пока без метаданных — чисто джун-версия
+        return result; // junior version: return only list (no metadata)
     }
 
-
+    // Delete by id (404 if missing)
     public void delete(long id) {
         if (!repo.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "customer not found");
@@ -89,6 +93,7 @@ public class CustomerService {
         repo.deleteById(id);
     }
 
+    // Simple mapper
     private static CustomerDto toDto(CustomerEntity e) {
         return new CustomerDto(e.getId(), e.getFirstName(), e.getLastName(), e.getEmail());
     }

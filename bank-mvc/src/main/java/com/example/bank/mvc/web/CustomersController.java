@@ -16,6 +16,7 @@ public class CustomersController {
         this.api = api;
     }
 
+    // List all customers (shows empty list + error banner on failure)
     @GetMapping("/customers")
     public String list(Model model) {
         try {
@@ -27,24 +28,26 @@ public class CustomersController {
         return "customers/list";
     }
 
+    // View one customer + their accounts
     @GetMapping("/customers/{id}")
     public String view(@PathVariable Long id, Model model) {
         try {
             model.addAttribute("customer", api.getCustomer(id));
-            // NEW: подгружаем счета клиента
-            model.addAttribute("accounts", api.getAccountsByCustomer(id));
+            model.addAttribute("accounts", api.getAccountsByCustomer(id)); // eager-load for page
         } catch (Exception ex) {
             model.addAttribute("error", "Failed to load customer: " + ex.getMessage());
         }
         return "customers/view";
     }
 
+    // Create form
     @GetMapping("/customers/new")
     public String newForm(Model model) {
         model.addAttribute("customer", new CustomerDto());
         return "customers/new";
     }
 
+    // Create action (handles 409 for duplicate email)
     @PostMapping("/customers")
     public String create(@ModelAttribute("customer") CustomerDto form, Model model) {
         try {
@@ -69,6 +72,7 @@ public class CustomersController {
         }
     }
 
+    // Edit form
     @GetMapping("/customers/{id}/edit")
     public String editForm(@PathVariable Long id, Model model) {
         try {
@@ -81,6 +85,7 @@ public class CustomersController {
         return "customers/edit";
     }
 
+    // Edit action (handles 409 for duplicate email)
     @PostMapping("/customers/{id}/edit")
     public String edit(@PathVariable Long id, @ModelAttribute("customer") CustomerDto form, Model model) {
         try {
@@ -101,6 +106,8 @@ public class CustomersController {
     }
 
     // ---------- DELETE ----------
+
+    // Confirm delete page
     @GetMapping("/customers/{id}/delete")
     public String confirmDelete(@PathVariable Long id, Model model) {
         try {
@@ -112,6 +119,7 @@ public class CustomersController {
         }
     }
 
+    // Delete action (shows helpful message if backend rejects)
     @PostMapping("/customers/{id}/delete")
     public String doDelete(@PathVariable Long id, RedirectAttributes ra) {
         try {
@@ -130,16 +138,14 @@ public class CustomersController {
             ra.addFlashAttribute("error",
                     (msg != null && !msg.isBlank())
                             ? msg
-                            : "Delete failed ("
-                            + ex.getStatusCode().value()
-                            + "). Likely the customer has linked accounts or transactions.");
+                            : "Delete failed (" + ex.getStatusCode().value() + "). Likely the customer has linked accounts or transactions.");
         } catch (Exception ex) {
             ra.addFlashAttribute("error", "Failed to delete: " + ex.getMessage());
         }
         return "redirect:/customers";
     }
-    // ----------------------------
 
+    // Try to read {"message": "..."} from backend error JSON
     private String extractApiMessage(org.springframework.web.client.HttpClientErrorException ex) {
         try {
             var mapper = new com.fasterxml.jackson.databind.ObjectMapper();

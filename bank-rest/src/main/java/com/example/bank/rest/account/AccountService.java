@@ -6,7 +6,7 @@ import com.example.bank.rest.account.dto.NewAccountRequest;
 import com.example.bank.rest.account.dto.TransactionDto;
 import com.example.bank.rest.account.dto.TransferRequest;
 
-// транзакции — импортируем только Entity/Repository
+// Transactions: import only entity/repo (keep service logic here)
 import com.example.bank.rest.transaction.TransactionEntity;
 import com.example.bank.rest.transaction.TransactionRepository;
 
@@ -16,11 +16,15 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;   // <— добавили
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.*;
 
+/**
+ * Account domain service (REST side): mapping, validations, money ops.
+ * Keep logic simple and explicit for interview readability.
+ */
 @Service
 public class AccountService {
 
@@ -32,7 +36,7 @@ public class AccountService {
         this.trxRepo = trxRepo;
     }
 
-    // ---------- mapping ----------
+    // ---------- Mapping helpers ----------
     private AccountDto toDto(AccountEntity e) {
         AccountDto d = new AccountDto();
         d.setId(e.getId());
@@ -49,12 +53,12 @@ public class AccountService {
         d.setType(t.getType().name());
         d.setAmount(t.getAmount());
         d.setDescription(t.getDescription());
-        // FIX: Instant -> OffsetDateTime (берем UTC)
+        // Use OffsetDateTime (UTC) for API responses
         d.setCreatedAt(OffsetDateTime.ofInstant(t.getCreatedAt(), ZoneOffset.UTC));
         return d;
     }
 
-    // ---------- queries ----------
+    // ---------- Queries ----------
     public List<AccountDto> listByCustomer(long customerId) {
         return accountRepo.findByCustomerId(customerId).stream().map(this::toDto).toList();
     }
@@ -65,6 +69,7 @@ public class AccountService {
         return toDto(e);
     }
 
+    // Public read (used by MVC optional currency check)
     public AccountDto getPublic(long accountId) {
         AccountEntity e = accountRepo.findById(accountId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "account not found"));
@@ -72,14 +77,15 @@ public class AccountService {
     }
 
     public List<TransactionDto> listTransactions(long customerId, long accountId) {
+        // Ensure ownership before listing
         accountRepo.findByIdAndCustomerId(accountId, customerId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "account not found"));
         return trxRepo.findTop100ByAccount_IdOrderByCreatedAtDesc(accountId)
                 .stream().map(this::toDto).toList();
     }
 
-    // ---------- commands ----------
-    @Transactional
+    // ---------- Commands ----------
+    @Transactional // one DB unit: create account
     public AccountDto create(long customerId, NewAccountRequest req) {
         if (req.getBalance().compareTo(BigDecimal.ZERO) < 0) {
             throw new ResponseStatusException(BAD_REQUEST, "balance cannot be negative");
@@ -93,7 +99,7 @@ public class AccountService {
         return toDto(e);
     }
 
-    @Transactional
+    @Transactional // one DB unit: delete after checks
     public void delete(long customerId, long accountId) {
         AccountEntity e = accountRepo.findByIdAndCustomerId(accountId, customerId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "account not found"));
@@ -103,7 +109,7 @@ public class AccountService {
         accountRepo.delete(e);
     }
 
-    @Transactional
+    @Transactional // one DB unit: deposit + transaction
     public TransactionDto deposit(long customerId, long accountId, AmountRequest req) {
         if (req.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(BAD_REQUEST, "amount must be positive");
@@ -123,7 +129,7 @@ public class AccountService {
         return toDto(t);
     }
 
-    @Transactional
+    @Transactional // one DB unit: withdraw + transaction
     public TransactionDto withdraw(long customerId, long accountId, AmountRequest req) {
         if (req.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(BAD_REQUEST, "amount must be positive");
@@ -147,7 +153,7 @@ public class AccountService {
         return toDto(t);
     }
 
-    @Transactional
+    @Transactional // one DB unit: move money + two transactions
     public TransactionDto transfer(long customerId, long fromAccountId, TransferRequest req) {
         if (req.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(BAD_REQUEST, "amount must be positive");
@@ -158,6 +164,7 @@ public class AccountService {
         AccountEntity to = accountRepo.findById(req.getToAccountId())
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "to account not found"));
 
+        // Simple same-currency rule (no FX here)
         if (!from.getCurrency().equals(to.getCurrency())) {
             throw new ResponseStatusException(BAD_REQUEST, "currencies must match");
         }
@@ -165,9 +172,11 @@ public class AccountService {
             throw new ResponseStatusException(BAD_REQUEST, "insufficient funds");
         }
 
+        // Update balances
         from.setBalance(from.getBalance().subtract(req.getAmount()));
         to.setBalance(to.getBalance().add(req.getAmount()));
 
+        // Outgoing record
         TransactionEntity out = new TransactionEntity();
         out.setAccount(from);
         out.setType(com.example.bank.rest.transaction.TransactionType.TRANSFER_OUT);
@@ -175,6 +184,7 @@ public class AccountService {
         out.setDescription(req.getDescription());
         trxRepo.save(out);
 
+        // Incoming record
         TransactionEntity in = new TransactionEntity();
         in.setAccount(to);
         in.setType(com.example.bank.rest.transaction.TransactionType.TRANSFER_IN);

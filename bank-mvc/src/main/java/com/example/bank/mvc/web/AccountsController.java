@@ -20,11 +20,13 @@ public class AccountsController {
         this.api = api;
     }
 
+    // Redirect root accounts to customers list
     @GetMapping("/accounts")
     public String accountsEntry() {
         return "redirect:/customers";
     }
 
+    // List accounts for a customer
     @GetMapping("/customers/{customerId}/accounts")
     public String list(@PathVariable Long customerId, Model model) {
         model.addAttribute("customer", api.getCustomer(customerId));
@@ -32,6 +34,7 @@ public class AccountsController {
         return "accounts/list";
     }
 
+    // View single account + recent transactions (empty list if API fails)
     @GetMapping("/customers/{customerId}/accounts/{accountId}")
     public String view(@PathVariable Long customerId,
                        @PathVariable Long accountId,
@@ -46,20 +49,21 @@ public class AccountsController {
         return "accounts/view";
     }
 
-
     // ----- Open account -----
+
+    // Show "new account" form
     @GetMapping("/customers/{customerId}/accounts/new")
     public String newForm(@PathVariable Long customerId, Model model) {
         model.addAttribute("customer", api.getCustomer(customerId));
         return "accounts/new";
     }
 
-
+    // Create account (validates non-negative initial balance)
     @PostMapping("/customers/{customerId}/accounts")
     public String create(@PathVariable Long customerId,
                          @RequestParam String number,
                          @RequestParam String currency,
-                         @RequestParam BigDecimal balance,   // <-- NEW
+                         @RequestParam BigDecimal balance,
                          RedirectAttributes ra) {
         try {
             if (balance.compareTo(BigDecimal.ZERO) < 0) {
@@ -76,6 +80,8 @@ public class AccountsController {
     }
 
     // ---------- Delete account ----------
+
+    // Confirm delete page (allowed only when balance == 0)
     @GetMapping("/customers/{customerId}/accounts/{accountId}/delete")
     public String confirmDelete(@PathVariable Long customerId,
                                 @PathVariable Long accountId,
@@ -91,6 +97,7 @@ public class AccountsController {
         return "accounts/delete";
     }
 
+    // Perform delete (guard if balance != 0)
     @PostMapping("/customers/{customerId}/accounts/{accountId}/delete")
     public String doDelete(@PathVariable Long customerId,
                            @PathVariable Long accountId,
@@ -110,6 +117,8 @@ public class AccountsController {
     }
 
     // ---------- Deposit ----------
+
+    // Deposit form
     @GetMapping("/customers/{customerId}/accounts/{accountId}/deposit")
     public String depositForm(@PathVariable Long customerId, @PathVariable Long accountId, Model model) {
         model.addAttribute("customer", api.getCustomer(customerId));
@@ -117,6 +126,7 @@ public class AccountsController {
         return "accounts/deposit";
     }
 
+    // Do deposit
     @PostMapping("/customers/{customerId}/accounts/{accountId}/deposit")
     public String doDeposit(@PathVariable Long customerId, @PathVariable Long accountId,
                             @RequestParam BigDecimal amount,
@@ -133,6 +143,8 @@ public class AccountsController {
     }
 
     // ---------- Withdraw ----------
+
+    // Withdraw form
     @GetMapping("/customers/{customerId}/accounts/{accountId}/withdraw")
     public String withdrawForm(@PathVariable Long customerId, @PathVariable Long accountId, Model model) {
         model.addAttribute("customer", api.getCustomer(customerId));
@@ -140,6 +152,7 @@ public class AccountsController {
         return "accounts/withdraw";
     }
 
+    // Do withdraw
     @PostMapping("/customers/{customerId}/accounts/{accountId}/withdraw")
     public String doWithdraw(@PathVariable Long customerId, @PathVariable Long accountId,
                              @RequestParam BigDecimal amount,
@@ -155,7 +168,7 @@ public class AccountsController {
         }
     }
 
-    // открыть форму transfer (из строки счёта) — как было
+    // Transfer form (pre-fills same-currency targets, excludes self)
     @GetMapping("/customers/{customerId}/accounts/{accountId}/transfer")
     public String transferForm(@PathVariable Long customerId,
                                @PathVariable Long accountId,
@@ -164,7 +177,7 @@ public class AccountsController {
         var from = api.getAccount(customerId, accountId);
         var all = api.getAccountsByCustomer(customerId);
 
-        // список собственных получателей той же валюты (без самого себя)
+        // Build list of own target accounts with same currency (exclude self)
         var sameCurrencyTargets = new java.util.ArrayList<>(all);
         sameCurrencyTargets.removeIf(a ->
                 a.getId().equals(from.getId()) ||
@@ -173,31 +186,31 @@ public class AccountsController {
 
         model.addAttribute("customer", customer);
         model.addAttribute("from", from);
-        model.addAttribute("accounts", all);              // для селекта "from"
-        model.addAttribute("targets", sameCurrencyTargets); // "to (my)"
+        model.addAttribute("accounts", all);                // for "from" select
+        model.addAttribute("targets", sameCurrencyTargets); // own "to" options
         model.addAttribute("hasTargets", !sameCurrencyTargets.isEmpty());
         return "accounts/transfer";
     }
 
-    // единый обработчик transfer (и на свои счета, и на чужой ID)
+    // Unified transfer handler (own account or external by ID)
     @PostMapping("/customers/{customerId}/transfer")
     public String doTransferAny(@PathVariable Long customerId,
                                 @RequestParam Long fromAccountId,
-                                @RequestParam(required = false) Long toAccountId,       // мой счёт
-                                @RequestParam(required = false) Long externalAccountId, // чужой счёт
+                                @RequestParam(required = false) Long toAccountId,       // own account
+                                @RequestParam(required = false) Long externalAccountId, // external account
                                 @RequestParam java.math.BigDecimal amount,
                                 @RequestParam(required = false) String description,
                                 org.springframework.web.servlet.mvc.support.RedirectAttributes ra) {
         try {
+            // Exactly one destination must be chosen
             if ((toAccountId == null) == (externalAccountId == null)) {
                 ra.addFlashAttribute("error", "Choose exactly one destination.");
                 return "redirect:/customers/" + customerId + "/accounts/" + fromAccountId + "/transfer";
             }
             var from = api.getAccount(customerId, fromAccountId);
-
             Long destId = (toAccountId != null) ? toAccountId : externalAccountId;
 
-            // ВАЛЮТА: если перевод на свой счёт — проверим строго
+            // Currency check for own transfers
             if (toAccountId != null) {
                 var to = api.getAccount(customerId, toAccountId);
                 if (from.getCurrency() != null && to.getCurrency() != null
@@ -206,16 +219,16 @@ public class AccountsController {
                     return "redirect:/customers/" + customerId + "/accounts/" + fromAccountId + "/transfer";
                 }
             }
-            // Внешний перевод: если у REST есть публичный GET /api/accounts/{id}, можно тоже сверить валюты.
+            // Optional currency check for external (if public endpoint exists)
             try {
-                var publicTo = api.getAccountByAnyId(destId); // может бросить, если нет эндпойнта
+                var publicTo = api.getAccountByAnyId(destId);
                 if (publicTo != null && publicTo.getCurrency() != null
                         && from.getCurrency() != null
                         && !from.getCurrency().equals(publicTo.getCurrency())) {
                     ra.addFlashAttribute("error", "Currencies must match (" + from.getCurrency() + ").");
                     return "redirect:/customers/" + customerId + "/accounts/" + fromAccountId + "/transfer";
                 }
-            } catch (Exception ignore) { /* нет публичного эндпойнта — проверит REST */ }
+            } catch (Exception ignore) { /* no public endpoint – backend will validate */ }
 
             api.transfer(customerId, fromAccountId, destId, amount, description);
             ra.addFlashAttribute("message", "Transfer successful.");
