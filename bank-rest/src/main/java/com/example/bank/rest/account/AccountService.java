@@ -99,13 +99,20 @@ public class AccountService {
         return toDto(e);
     }
 
-    @Transactional // one DB unit: delete after checks
+    @Transactional
     public void delete(long customerId, long accountId) {
         AccountEntity e = accountRepo.findByIdAndCustomerId(accountId, customerId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "account not found"));
+
+        // junior: можно удалять только при нулевом балансе
         if (e.getBalance().compareTo(BigDecimal.ZERO) != 0) {
             throw new ResponseStatusException(CONFLICT, "balance must be 0 to delete");
         }
+
+        // NEW: сначала удаляем "детей" (transactions), иначе FK не даст удалить аккаунт
+        trxRepo.deleteByAccount_Id(accountId);  // junior: safe for MySQL FK
+
+        // теперь удаляем сам счёт
         accountRepo.delete(e);
     }
 

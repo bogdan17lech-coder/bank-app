@@ -1,0 +1,20 @@
+# REST + MySQL (persistent data)
+# Loaded only when profile=mysql
+
+spring:
+  config:
+    activate:
+      on-profile: mysql        # bind this file to profile=mysql
+  datasource:
+    url: jdbc:mysql://localhost:3306/bank?createDatabaseIfNotExist=true&serverTimezone=UTC
+    username: root
+    password: kuwe123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update        # keep data, evolve schema
+    show-sql: true
+    open-in-view: false
+
+server:
+  port: 8081                   # keep same REST port across profiles

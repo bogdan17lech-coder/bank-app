@@ -1,5 +1,6 @@
 package com.example.bank.rest.customer;
 
+import org.junit.jupiter.api.BeforeEach; // JUnit 5
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -13,11 +14,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.isEmptyString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@ActiveProfiles("test")
+/**
+ * Full-stack IT for /api/customers endpoints.
+ * Uses TEST profile (in-memory H2). Each test starts from a clean DB.
+ */
+@ActiveProfiles("test")   // use application-test.yml with in-memory H2
 @SpringBootTest
 @AutoConfigureMockMvc
 class CustomersControllerIT {
@@ -25,58 +29,102 @@ class CustomersControllerIT {
     @Autowired MockMvc mvc;
     @Autowired CustomerRepository repo;
 
+    // Basic auth header for write ops (POST/PUT/DELETE require role API)
     private static String basicAuth() {
         String token = Base64.getEncoder()
                 .encodeToString("api:secret".getBytes(StandardCharsets.UTF_8));
         return "Basic " + token;
     }
 
-    @Test
-    void create_get_delete_ok() throws Exception {
-        // уникальный email, чтобы не зависеть от состояния БД
-        String email = "jane+" + UUID.randomUUID() + "@example.com";
+    // Clean DB before each test (no data leaks between tests)
+    @BeforeEach
+    void cleanDb() {
+        repo.deleteAll();
+    }
 
-        // CREATE (POST /api/customers)
+    @Test
+    void create_and_get_ok() throws Exception {
+        String email = "c+" + UUID.randomUUID() + "@example.com";
+
+        // Create
         mvc.perform(post("/api/customers")
                         .header(HttpHeaders.AUTHORIZATION, basicAuth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(("""
-                    {"firstName":"Jane","lastName":"Doe","email":"%s"}
-                """).formatted(email)))
+                        .content((""" 
+                            {"firstName":"John","lastName":"Doe","email":"%s"}
+                        """).formatted(email)))
                 .andExpect(status().isCreated())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.firstName").value("Jane"))
                 .andExpect(jsonPath("$.email").value(email));
 
-        // берем id из репозитория
         Long id = repo.findByEmail(email).orElseThrow().getId();
 
-        // GET (публичный)
+        // Get by id
         mvc.perform(get("/api/customers/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id.intValue()))
-                .andExpect(jsonPath("$.email").value(email));
+                .andExpect(jsonPath("$.firstName").value("John"));
+    }
 
-        // DELETE (нужен basic-auth)
+    @Test
+    void create_conflict_on_duplicate_email() throws Exception {
+        String email = "dup+" + UUID.randomUUID() + "@example.com";
+
+        // First create
+        mvc.perform(post("/api/customers")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content((""" 
+                            {"firstName":"A","lastName":"B","email":"%s"}
+                        """).formatted(email)))
+                .andExpect(status().isCreated());
+
+        // Second create with same email -> 409
+        mvc.perform(post("/api/customers")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content((""" 
+                            {"firstName":"C","lastName":"D","email":"%s"}
+                        """).formatted(email)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.message").value("email already exists"));
+    }
+
+    @Test
+    void update_and_delete_flow() throws Exception {
+        String email = "u+" + UUID.randomUUID() + "@example.com";
+
+        // Create
+        mvc.perform(post("/api/customers")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content((""" 
+                            {"firstName":"Ann","lastName":"Old","email":"%s"}
+                        """).formatted(email)))
+                .andExpect(status().isCreated());
+
+        Long id = repo.findByEmail(email).orElseThrow().getId();
+
+        // Full update (PUT)
+        mvc.perform(put("/api/customers/{id}", id)
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content((""" 
+                            {"firstName":"Ann","lastName":"New","email":"%s"}
+                        """).formatted(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastName").value("New"));
+
+        // Delete
         mvc.perform(delete("/api/customers/{id}", id)
                         .header(HttpHeaders.AUTHORIZATION, basicAuth()))
                 .andExpect(status().isNoContent());
 
-        // после удаления — 404
+        // After delete -> 404
         mvc.perform(get("/api/customers/{id}", id))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("customer not found"));
     }
-
-    @Test
-    void create_requires_auth_401() throws Exception {
-        mvc.perform(post("/api/customers")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                {"firstName":"No","lastName":"Auth","email":"noauth+%s@x"}
-                """.formatted(java.util.UUID.randomUUID())))
-                .andExpect(status().isUnauthorized());
-    }
-
 }

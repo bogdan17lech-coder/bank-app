@@ -23,9 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.junit.jupiter.api.BeforeEach;
 
-/** Full-stack IT для /api/customers/{cid}/accounts/* и /api/accounts/{id}. */
-@ActiveProfiles("test")
+/** Full-stack IT for /api/customers/{cid}/accounts/* and /api/accounts/{id}. */
+@ActiveProfiles("test")              // use application-test.yml (isolated in-memory DB)
 @SpringBootTest
 @AutoConfigureMockMvc
 class AccountsControllerIT {
@@ -35,11 +36,14 @@ class AccountsControllerIT {
     @Autowired TransactionRepository trxRepo;
     @Autowired CustomerRepository customerRepo;
 
+    // Basic auth for write endpoints (POST/DELETE). GET is public.
     private static String basicAuth() {
         String token = Base64.getEncoder()
                 .encodeToString("api:secret".getBytes(StandardCharsets.UTF_8));
         return "Basic " + token;
     }
+
+    // --- test helpers (small factory methods) ---
 
     private Long makeCustomer(String email) {
         var c = new CustomerEntity();
@@ -58,16 +62,26 @@ class AccountsControllerIT {
         return accountRepo.save(a);
     }
 
+    // --- IMPORTANT: clean DB before each test ---
+    // Why: tests must not leak data between runs. We wipe in FK order:
+    // transactions -> accounts -> customers.
+    @BeforeEach
+    void cleanDatabase() {
+        trxRepo.deleteAll();      // child table first
+        accountRepo.deleteAll();  // then parent
+        customerRepo.deleteAll(); // finally root
+    }
+
     @Test
     void create_list_get_public_get_delete_ok() throws Exception {
         long cid = makeCustomer("acc1+" + UUID.randomUUID() + "@x");
 
         String number = "ACC-" + UUID.randomUUID();
-        // create с нулевым балансом, чтобы можно было удалить без FK-проблем с транзакциями
+        // create with zero balance → can delete later w/o conflicts
         mvc.perform(post("/api/customers/{cid}/accounts", cid)
                         .header(HttpHeaders.AUTHORIZATION, basicAuth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(("""
+                        .content((""" 
                         {"number":"%s","currency":"PLN","balance":0.00}
                         """).formatted(number)))
                 .andExpect(status().isCreated())
@@ -181,7 +195,7 @@ class AccountsControllerIT {
         mvc.perform(post("/api/customers/{cid}/accounts/{aid}/transfer", fromCid, from.getId())
                         .header(HttpHeaders.AUTHORIZATION, basicAuth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(("""
+                        .content((""" 
                         {"toAccountId":%d,"amount":10.00,"description":"x"}
                         """).formatted(toUsd.getId())))
                 .andExpect(status().isBadRequest())
@@ -194,7 +208,7 @@ class AccountsControllerIT {
         mvc.perform(post("/api/customers/{cid}/accounts/{aid}/transfer", fromCid, from.getId())
                         .header(HttpHeaders.AUTHORIZATION, basicAuth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(("""
+                        .content((""" 
                         {"toAccountId":%d,"amount":15.00,"description":"rent"}
                         """).formatted(toPln.getId())))
                 .andExpect(status().isOk())
@@ -220,7 +234,7 @@ class AccountsControllerIT {
     @Test
     void delete_non_zero_balance_409() throws Exception {
         long cid = makeCustomer("del409+" + UUID.randomUUID() + "@x");
-        var acc = makeAccount(cid, "D-" + UUID.randomUUID(), "PLN", "5.00"); // баланс не 0
+        var acc = makeAccount(cid, "D-" + UUID.randomUUID(), "PLN", "5.00"); // non-zero balance
 
         mvc.perform(delete("/api/customers/{cid}/accounts/{aid}", cid, acc.getId())
                         .header(HttpHeaders.AUTHORIZATION, basicAuth()))
@@ -232,7 +246,7 @@ class AccountsControllerIT {
 
     @Test
     void create_requires_auth_401() throws Exception {
-        long cid = 777_000 + System.nanoTime(); // любой id
+        long cid = 777_000 + System.nanoTime(); // any id
         mvc.perform(post("/api/customers/{cid}/accounts", cid)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -249,7 +263,7 @@ class AccountsControllerIT {
         mvc.perform(post("/api/customers/{cid}/accounts/{aid}/deposit", cid, a.getId())
                         .header(HttpHeaders.AUTHORIZATION, basicAuth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"amount\":0}"))                  // <-- обычная строка
+                        .content("{\"amount\":0}"))                  // plain JSON string
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("amount must be positive"));
     }
@@ -262,11 +276,10 @@ class AccountsControllerIT {
         mvc.perform(post("/api/customers/{cid}/accounts/{aid}/withdraw", cid, a.getId())
                         .header(HttpHeaders.AUTHORIZATION, basicAuth())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"amount\":-1}"))                 // <-- обычная строка
+                        .content("{\"amount\":-1}"))                 // plain JSON string
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("amount must be positive"));
     }
-
 
     @Test
     void owner_mismatch_get_and_transactions_404() throws Exception {
@@ -274,12 +287,12 @@ class AccountsControllerIT {
         long otherCid = makeCustomer("oth+" + java.util.UUID.randomUUID() + "@x");
         var a = makeAccount(ownerCid, "OWN-" + java.util.UUID.randomUUID(), "PLN", "5.00");
 
-        // чужой владелец запрашивает сам счёт
+        // wrong owner tries to read account
         mvc.perform(get("/api/customers/{cid}/accounts/{aid}", otherCid, a.getId()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("account not found"));
 
-        // и историю транзакций
+        // wrong owner tries to read transactions
         mvc.perform(get("/api/customers/{cid}/accounts/{aid}/transactions", otherCid, a.getId()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("account not found"));
@@ -291,6 +304,4 @@ class AccountsControllerIT {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("account not found"));
     }
-
-
 }

@@ -11,7 +11,12 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
-/** Basic security for REST API: public GET, authenticated writes */
+/**
+ * Simple security for REST API (dev).
+ * - Public GET for read-only endpoints
+ * - Basic auth for write endpoints
+ * - Allow H2 console (no auth) and disable frames/CSRF for it
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -19,29 +24,38 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                // For REST API we disable CSRF on /api/**
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
+                // CSRF is not needed for stateless REST and H2 console
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/h2-console/**"))
+                .headers(h -> h.frameOptions(f -> f.disable())) // H2 uses frames
                 .authorizeHttpRequests(auth -> auth
+                        // H2 console must be reachable without auth
+                        .requestMatchers("/h2-console/**").permitAll()
+
                         // Public read endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/customers/**", "/api/accounts/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/customers/**",
+                                "/api/accounts/**",
+                                "/api/ping"
+                        ).permitAll()
+
                         // Write endpoints require role API
-                        .requestMatchers(HttpMethod.POST, "/api/**").hasRole("API")
-                        .requestMatchers(HttpMethod.PUT,  "/api/**").hasRole("API")
-                        .requestMatchers(HttpMethod.DELETE,"/api/**").hasRole("API")
-                        // Everything else must be authenticated
+                        .requestMatchers(HttpMethod.POST,   "/api/**").hasRole("API")
+                        .requestMatchers(HttpMethod.PUT,    "/api/**").hasRole("API")
+                        .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("API")
+
+                        // Everything else -> auth
                         .anyRequest().authenticated()
                 )
-                // Simple HTTP Basic for demo/dev
                 .httpBasic(Customizer.withDefaults())
                 .build();
     }
 
-    // In-memory user for local/dev use only
+    /** In-memory user for dev/tests (do not use in prod). */
     @Bean
     public UserDetailsService users() {
         return new InMemoryUserDetailsManager(
                 User.withUsername("api")
-                        .password("{noop}secret") // DO NOT use in production
+                        .password("{noop}secret")
                         .roles("API")
                         .build()
         );

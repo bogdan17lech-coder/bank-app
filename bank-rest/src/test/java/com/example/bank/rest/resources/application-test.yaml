@@ -1,15 +1,22 @@
+# Test profile for REST module
+# Use fresh in-memory H2 for every test run.
+
 spring:
   datasource:
-    url: jdbc:h2:mem:bank;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    # in-memory DB (nothing is stored on disk)
+    url: jdbc:h2:mem:bank_test;MODE=MySQL;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password:
   jpa:
     hibernate:
+      # create schema on context start, drop on shutdown
       ddl-auto: create-drop
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-logging:
-  level:
-    org.hibernate.SQL: warn
+    show-sql: false  # keep tests quiet
+    open-in-view: false
+  h2:
+    console:
+      enabled: true  # optional; handy when running tests manually
+  sql:
+    init:
+      mode: never    # do NOT run data.sql automatically

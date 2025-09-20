@@ -1,18 +1,4 @@
+# Default profile FOR NOW -> mysql (to be 100% sure it loads MySQL config)
 spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/bank?useSSL=false&serverTimezone=UTC
-    username: root
-    password: kuwe123
-  jpa:
-    hibernate:
-      ddl-auto: update
-    open-in-view: false
-
-server:
-  port: 8080
-
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui
+  profiles:
+    active: mysql   # later можно вернуть на h2, когда всё проверим

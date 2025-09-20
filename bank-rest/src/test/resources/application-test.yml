@@ -1,0 +1,16 @@
+# --- Spring Boot TEST config for REST module ---
+# Goal: isolated, in-memory DB for tests only.
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:bank_test;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop   # rebuild schema per test context
+    show-sql: false           # usually keep tests quieter
+  sql:
+    init:
+      mode: never             # no auto-seed in tests (unless you want it)

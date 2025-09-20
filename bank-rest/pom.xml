@@ -32,6 +32,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- DEV: use H2 in-memory DB when running the REST app locally -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope> <!-- not "test": we need it at app runtime -->
+        </dependency>
+
+
 
         <!-- web + валидация -->
         <dependency>

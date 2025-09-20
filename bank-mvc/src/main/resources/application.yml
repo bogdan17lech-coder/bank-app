@@ -1,19 +1,20 @@
+# MVC calls the REST API
 server:
-  port: 8081
+  port: 8082                 # MVC port
 
 spring:
   thymeleaf:
-    cache: false
+    cache: false             # hot reload templates
 
 logging:
   level:
-    org.springframework.web.client.RestTemplate: DEBUG
+    org.springframework.web.client.RestTemplate: DEBUG  # log outgoing REST calls
 
 bank:
   api:
-    base-url: http://localhost:8080
+    base-url: http://localhost:8081   # REST sits here (both H2/MySQL profiles)
     customers-path: /api/customers
     auth:
       type: basic
-      username: api       # твои креды к REST
+      username: api
       password: secret
